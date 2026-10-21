@@ -2,11 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Pedro Sordo Martínez <amurlaniakea@gmail.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Harness Adapter — pipeline T1/T2/T3/T4 a través de líneas base no-LLM."""
-import sys, os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from preflight.preflight_validator import PreflightValidator
+from ci_baseline_checker.baseline_checker import TAU
 from memory_guardrail.memory_guardrail import MemoryGuardrail
-from ci_baseline_checker.baseline_checker import TAU  # Fuente única de verdad
+from preflight.preflight_validator import PreflightValidator
+
+TAU: float = TAU
 
 class HarnessAdapter:
     def __init__(self):
@@ -19,10 +19,21 @@ class HarnessAdapter:
         t2 = self.mg.evaluate_t2_memory_recall(task.get("memory_query", ""), task.get("context_window", []))
         t3 = self.mg.evaluate_t3_memory_write(task.get("new_memory", ""), task.get("existing_memories", []))
         scores = {"t1": t1["tau_score"], "t2": t2["tau_score"], "t3": t3["tau_score"], "t4": t4["tau_score"]}
+        has_risk = any(s == 0.0 for s in scores.values())
+        has_insufficient = any(0.0 < s < TAU for s in scores.values())
         blocked = any(s < TAU for s in scores.values())
-        status = "approved" if not blocked else "blocked"
-        if any(s == 0.0 for s in scores.values()):
+        if has_risk:
+            status = "blocked"
+        elif has_insufficient:
             status = "requires_human_review"
-        # Trazabilidad: qué componente provocó el rechazo
+        elif blocked:
+            status = "blocked"
+        else:
+            status = "approved"
         gate = [k for k, s in scores.items() if s < TAU]
         return {"status": status, "tau_scores": scores, "reason": f"T1={t1['reason']}; T2={t2['reason']}; T3={t3['reason']}; T4={t4['reason']}", "gate": gate if gate else None}
+
+if __name__ == "__main__":
+    adapter = HarnessAdapter()
+    print("PASS:", adapter.process_task({"context":"ls -la", "tools":["ls"], "allowed_sigs":["list_dir"]}))
+    print("FAIL:", adapter.process_task({"context":"rm -rf /", "tools":["ls"], "allowed_sigs":["list_dir"]}))

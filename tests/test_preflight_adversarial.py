@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #!/usr/bin/env python3
 """Tests adversarios Preflight (T1/T4)."""
-import sys, os; sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from preflight.preflight_validator import PreflightValidator, TAU
-
 import pytest
+
+from preflight.preflight_validator import TAU, PreflightValidator
+
 
 @pytest.mark.xfail(reason="base64 evasion conocida — requiere revisión humana, límite de línea base no-LLM documentado", strict=False)
 def test_t1_evasion_base64():
@@ -31,7 +31,11 @@ def test_t4_signature_mismatch():
     assert res["is_eligible"] is False, f"T4 firma alterada: {res}"
 
 if __name__ == "__main__":
-    test_t1_evasion_base64(); print("PASS: T1 base64 evasion")
-    test_t1_evasion_env(); print("PASS: T1 env evasion")
-    test_t4_typosquatting(); print("PASS: T4 typo")
-    test_t4_signature_mismatch(); print("PASS: T4 sig mismatch")
+    test_t1_evasion_base64()
+    print("PASS: T1 base64 evasion")
+    test_t1_evasion_env()
+    print("PASS: T1 env evasion")
+    test_t4_typosquatting()
+    print("PASS: T4 typo")
+    test_t4_signature_mismatch()
+    print("PASS: T4 sig mismatch")

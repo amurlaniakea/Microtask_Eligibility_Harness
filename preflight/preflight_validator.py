@@ -3,19 +3,16 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Preflight Validator (T1 + T4) — arXiv 2610.00025. Non-LLM baseline."""
 from __future__ import annotations
-import sys, re, importlib.util
-sys.path.insert(0, ".")
-# Importar TAU desde la fuente de verdad del baseline
-import importlib.util, os
-base_path = os.path.join(os.path.dirname(__file__), "..")
-spec = importlib.util.spec_from_file_location("baseline", os.path.join(base_path, "ci_baseline_checker", "baseline_checker.py"))
-baseline_mod = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(baseline_mod)
-TAU = baseline_mod.TAU
+
+import re
+
+from ci_baseline_checker.baseline_checker import TAU
+
+TAU: float = TAU
 
 class PreflightValidator:
     """Validador defensivo: T1 (shell) y T4 (tool selection por firma)."""
-    SHELL_RISK = [re.compile(p, re.I) for p in [r"rm\s+-rf", r"sudo\s+", r"curl\s+.*\|\s*(sh|bash)", r"eval\s*\("]]
+    SHELL_RISK = [re.compile(p, re.IGNORECASE) for p in [r"rm\s+-rf", r"sudo\s+", r"curl\s+.*\|\s*(sh|bash)", r"eval\s*\("]]
     TOOL_SIGS = {"ls": "list_dir", "cat": "read_file", "git": "git_op"}
 
     def __init__(self, tau: float = TAU) -> None:
@@ -33,12 +30,10 @@ class PreflightValidator:
 
     def check_eligibility(self, task_description: str) -> dict:
         r1 = self.evaluate_t1_shell(task_description)
-        score = r1["tau_score"]  # T4 no aplica a texto libre; se usa T1 como proxy del harness
+        score = r1["tau_score"]
         return {"is_eligible": r1["is_eligible"], "tau_score": score, "reason": r1["reason"]}
 
 if __name__ == "__main__":
     v = PreflightValidator()
-    print("T1 ok:", v.evaluate_t1_shell("ls -la"))
-    print("T1 fail:", v.evaluate_t1_shell("rm -rf /"))
-    print("T4 ok:", v.evaluate_t4_tool_selection(["ls"], ["list_dir"]))
-    print("T4 fail:", v.evaluate_t4_tool_selection(["ghost"], ["list_dir"]))
+    print("PASS:", v.check_eligibility("ls -la /workspace"))
+    print("FAIL:", v.check_eligibility("rm -rf /tmp/test"))

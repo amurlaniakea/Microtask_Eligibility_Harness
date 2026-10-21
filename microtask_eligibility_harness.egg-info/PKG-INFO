@@ -1,0 +1,70 @@
+Metadata-Version: 2.4
+Name: microtask-eligibility-harness
+Version: 0.1.0
+Summary: Defensive agent harness enforcing non-LLM baseline eligibility for microtasks (shell, memory, tools). Replicates arXiv:2610.00025 gap.
+Author-email: Pedro Sordo Martínez <amurlaniakea@gmail.com>
+License: AGPL-3.0-or-later
+Keywords: agent-harness,ai-safety,defensive-ai,microtask-eligibility,slm
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Security
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Dynamic: license-file
+
+# Microtask Eligibility Harness
+
+[![License: AGPL-3.0-or-later](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+
+## El Problema
+
+Agent harnesses delegan microtareas críticas (shell auto-approval, memory recall/write, tool selection) a modelos pequeños (SLMs). El paper `arXiv:2610.00025` (Hu / Ramachandran, 2026) mide un **Microtask Eligibility Gap**: con línea base no-LLM + regla CI (`tau_score >= 0.95`), ninguna de las 16 configuraciones evaluadas (`Qwen3` 0.6/1.7/4/8B, `Llama-3.x`) pasa. **0/16 elegibles**. La solución no es confiar en el SLM: es proteger cada microtarea con una base determinista certificada.
+
+## La Solución
+
+Este proyecto implementa un harness defensivo con 4 componentes deterministas:
+
+- **Preflight Validator** (T1 / T4): reglas no-LLM (`re.Pattern`) para shell (`rm -rf`, `sudo`, `eval`) y tool selection (whitelist de firmas). Fail-closed.
+- **Memory Guardrail** (T2 / T3): línea base BM25 simulada (solapamiento determinista de tokens) con cascade de contexto; rechazo de inyección (`clear_memory`, `.env`, `.secret`).
+- **Harness Adapter**: pipeline determinista. Status: `approved` (todos >= TAU), `blocked` (algún score == 0.0 — riesgo confirmado), `requires_human_review` (algún score < TAU pero > 0.0 — confianza insuficiente, sin riesgo confirmado).
+- **CI Baseline Checker**: umbral `TAU = 0.95` importado como fuente de verdad; tests adversarios incluidos.
+
+## Uso Rápido
+
+```bash
+# Clonar
+git clone https://github.com/amurlaniakea/Microtask_Eligibility_Harness.git
+cd Microtask_Eligibility_Harness
+
+# Instalar dependencias
+pip install pytest
+
+# Correr tests (incluye adversarios)
+pytest -v
+
+# Ejecutar benchmark (replica 2610.00025: 0/16)
+python benchmark/run_benchmark.py
+```
+
+Salida esperada:
+```
+Benchmark completado: 0/16 elegibles (paper 2610.00025: 0/16).
+ASSERT PASADO: 0/16 elegibles, replicando el eligibility gap del paper.
+```
+
+## Referencia
+
+- Paper: [arXiv:2610.00025 — Measuring the Microtask Eligibility Gap](https://arxiv.org/abs/2610.00025) (Hu, Ramachandran; 2026).
+- Licencia: [AGPL-3.0-or-later](https://www.gnu.org/licenses/agpl-3.0) (`LICENSE`, 661 líneas, texto FSF verbatim).
+- Autor: Pedro Sordo Martínez — `amurlaniakea@gmail.com`

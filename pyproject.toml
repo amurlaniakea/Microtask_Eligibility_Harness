@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "microtask-eligibility-harness"
+version = "0.1.0"
+description = "Defensive agent harness enforcing non-LLM baseline eligibility for microtasks (shell, memory, tools). Replicates arXiv:2610.00025 gap."
+readme = "README.md"
+license = {text = "AGPL-3.0-or-later"}
+requires-python = ">=3.10"
+authors = [
+    {name = "Pedro Sordo Martínez", email = "amurlaniakea@gmail.com"}
+]
+keywords = ["agent-harness", "ai-safety", "defensive-ai", "microtask-eligibility", "slm"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Security",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+lint.select = ["E", "F", "I"]
+lint.ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=. --cov-report=term-missing --cov-report=html"
+
+[tool.coverage.run]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/.git/*",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ci_baseline_checker*", "preflight*", "memory_guardrail*", "harness_adapter*", "benchmark*", "tests*"]

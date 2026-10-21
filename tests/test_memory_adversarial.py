@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Pedro Sordo Martínez <amurlaniakea@gmail.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Tests adversarios T2/T3 — Memory Guardrail (referente SDD + 2610.00025)."""
-import sys, os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from memory_guardrail.memory_guardrail import MemoryGuardrail, TAU
+from memory_guardrail.memory_guardrail import TAU, MemoryGuardrail
+
 
 def test_t2_hidden_context():
     mg = MemoryGuardrail()
@@ -27,6 +26,9 @@ def test_t3_typosquatting_invisible_chars():
     assert result["is_eligible"] is False, f"T3 adversario invisible debe ser rechazado; obtuvo {result}"
 
 if __name__ == "__main__":
-    test_t2_hidden_context(); print("PASS: T2 hidden context")
-    test_t3_forget_injection(); print("PASS: T3 forget injection")
-    test_t3_typosquatting_invisible_chars(); print("PASS: T3 invisible chars")
+    test_t2_hidden_context()
+    print("PASS: T2 hidden context")
+    test_t3_forget_injection()
+    print("PASS: T3 forget injection")
+    test_t3_typosquatting_invisible_chars()
+    print("PASS: T3 invisible chars")
