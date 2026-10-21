@@ -12,7 +12,7 @@ Este proyecto implementa un harness defensivo con 4 componentes deterministas:
 
 - **Preflight Validator** (T1 / T4): reglas no-LLM (`re.Pattern`) para shell (`rm -rf`, `sudo`, `eval`) y tool selection (whitelist de firmas). Fail-closed.
 - **Memory Guardrail** (T2 / T3): línea base BM25 simulada (solapamiento determinista de tokens) con cascade de contexto; rechazo de inyección (`clear_memory`, `.env`, `.secret`).
-- **Harness Adapter**: pipeline que combina T1-T4; cualquier `tau_score < 0.95` activa `requires_human_review`.
+- **Harness Adapter**: pipeline determinista. Status: `approved` (todos >= TAU), `blocked` (algún score == 0.0 — riesgo confirmado), `requires_human_review` (algún score < TAU pero > 0.0 — confianza insuficiente, sin riesgo confirmado).
 - **CI Baseline Checker**: umbral `TAU = 0.95` importado como fuente de verdad; tests adversarios incluidos.
 
 ## Uso Rápido

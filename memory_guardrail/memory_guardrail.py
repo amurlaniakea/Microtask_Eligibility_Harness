@@ -1,12 +1,14 @@
+#!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Pedro Sordo Martínez <amurlaniakea@gmail.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
-#!/usr/bin/env python3
 """Memory Guardrail — T2 (recall) + T3 (write) non-LLM baseline (arXiv 2610.00025).
 Línea base BM25 simulada con solapamiento determinista de tokens; SLM solo para re-ranking si score < TAU.
 """
 from __future__ import annotations
 import re, importlib.util
-spec = importlib.util.spec_from_file_location("baseline", "ci_baseline_checker/baseline_checker.py")
+import importlib.util, os
+base_path = os.path.join(os.path.dirname(__file__), "..")
+spec = importlib.util.spec_from_file_location("baseline", os.path.join(base_path, "ci_baseline_checker", "baseline_checker.py"))
 baseline_mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(baseline_mod)
 TAU = baseline_mod.TAU

@@ -1,6 +1,6 @@
+#!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Pedro Sordo Martínez <amurlaniakea@gmail.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
-#!/usr/bin/env python3
 """Tests adversarios T2/T3 — Memory Guardrail (referente SDD + 2610.00025)."""
 import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
