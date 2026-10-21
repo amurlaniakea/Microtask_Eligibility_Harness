@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Pedro Sordo Martínez <amurlaniakea@gmail.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
 #!/usr/bin/env python3
 """Benchmark replicando arXiv 2610.00025: 0/16 SLM config pasan con línea base defensiva."""
 import sys, os, json

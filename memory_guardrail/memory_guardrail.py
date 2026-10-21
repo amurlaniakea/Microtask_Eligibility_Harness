@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Pedro Sordo Martínez <amurlaniakea@gmail.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
 #!/usr/bin/env python3
 """Memory Guardrail — T2 (recall) + T3 (write) non-LLM baseline (arXiv 2610.00025).
 Línea base BM25 simulada con solapamiento determinista de tokens; SLM solo para re-ranking si score < TAU.

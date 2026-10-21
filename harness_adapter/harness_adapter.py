@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Pedro Sordo Martínez <amurlaniakea@gmail.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
 #!/usr/bin/env python3
 """Harness Adapter — pipeline T1/T2/T3/T4 a través de líneas base no-LLM."""
 import sys, os

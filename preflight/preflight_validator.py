@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Pedro Sordo Martínez <amurlaniakea@gmail.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
 #!/usr/bin/env python3
 """Preflight Validator (T1 + T4) — arXiv 2610.00025. Non-LLM baseline."""
 from __future__ import annotations
