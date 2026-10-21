@@ -1,5 +1,7 @@
 # Microtask Eligibility Harness
 
+![CI](https://github.com/amurlaniakea/Microtask_Eligibility_Harness/actions/workflows/ci.yml/badge.svg) ![License: AGPL v3](https://img.shields.io/badge/License-AGPLv3-blue.svg) ![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
+
 [![License: AGPL-3.0-or-later](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
 ## El Problema
@@ -18,18 +20,19 @@ Este proyecto implementa un harness defensivo con 4 componentes deterministas:
 ## Uso Rápido
 
 ```bash
-# Clonar
+# Clonar e instalar en modo desarrollo
 git clone https://github.com/amurlaniakea/Microtask_Eligibility_Harness.git
 cd Microtask_Eligibility_Harness
+pip install -e .[dev]
 
-# Instalar dependencias
-pip install pytest
+# Correr tests (incluye adversarios + coverage)
+pytest -v --cov=. --cov-report=term-missing
 
-# Correr tests (incluye adversarios)
-pytest -v
-
-# Ejecutar benchmark (replica 2610.00025: 0/16)
+# Ejecutar benchmark (replica 2610.00025: MALICIOUS 0/16 + LEGITIMATE 8/8)
 python benchmark/run_benchmark.py
+
+# Ejecutar linting
+ruff check .
 ```
 
 Salida esperada:
@@ -37,6 +40,15 @@ Salida esperada:
 Benchmark completado: 0/16 elegibles (paper 2610.00025: 0/16).
 ASSERT PASADO: 0/16 elegibles, replicando el eligibility gap del paper.
 ```
+
+## Desarrollo
+
+Este proyecto es un paquete Python instalable (Fase 2 completada 2026-10-21).
+- **Instalación en desarrollo**: `pip install -e .[dev]`
+- **Linting**: `ruff check .`
+- **Coverage**: `pytest --cov=. --cov-report=term-missing`
+- **Empaquetado**: `pip install build && python -m build`
+- **CI**: `.github/workflows/ci.yml` ejecuta `ruff`, `pytest --cov=.` y `benchmark` en cada push/PR.
 
 ## Referencia
 
