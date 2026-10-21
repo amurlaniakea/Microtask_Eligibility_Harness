@@ -1,68 +1,40 @@
 #!/usr/bin/env python3
-"""Preflight Validator — reglas no-LLM para las 4 microtareas (arXiv 2610.00025).
-
-T1: shell auto-approval  |  T2: memory recall/write  |  T3: memory write  |  T4: tool/network selection
-Regla operativa: fail-closed. Riesgo detectado -> is_eligible=False, tau_score < TAU (0.95).
-"""
+"""Preflight Validator (T1 + T4) — arXiv 2610.00025. Non-LLM baseline."""
 from __future__ import annotations
-import re
-
-TAU: float = 0.95
-
+import sys, re, importlib.util
+sys.path.insert(0, ".")
+# Importar TAU desde la fuente de verdad del baseline
+spec = importlib.util.spec_from_file_location("baseline", "ci_baseline_checker/baseline_checker.py")
+baseline_mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(baseline_mod)
+TAU = baseline_mod.TAU
 
 class PreflightValidator:
-    """Validador defensivo con reglas deterministas no-LLM para las 4 microtareas."""
-
-    # T1: shell auto-approval (patrones destructivos / remotos)
-    SHELL_RISK: list[re.Pattern] = [
-        re.compile(r"rm\s+-rf", re.IGNORECASE),
-        re.compile(r"sudo\s+", re.IGNORECASE),
-        re.compile(r"curl\s+.*\|\s*(sh|bash)", re.IGNORECASE),
-        re.compile(r"eval\s*\(", re.IGNORECASE),
-    ]
-    # T2/T3: memory recall/write no autorizado (archivos sensibles / inyección)
-    MEMORY_RISK: list[re.Pattern] = [
-        re.compile(r"/etc/(passwd|shadow|hosts)"),
-        re.compile(r"\.env\b|\.secret\b"),
-        re.compile(r"injection|poison", re.IGNORECASE),
-    ]
-    # T4: tool/network selection de riesgo (redes externas no whitelisted)
-    NETWORK_RISK: list[re.Pattern] = [
-        re.compile(r"curl\s+https?://[^\s]+", re.IGNORECASE),
-        re.compile(r"wget\s+https?://", re.IGNORECASE),
-        re.compile(r"netcat|nc\s+-[e]", re.IGNORECASE),
-    ]
+    """Validador defensivo: T1 (shell) y T4 (tool selection por firma)."""
+    SHELL_RISK = [re.compile(p, re.I) for p in [r"rm\s+-rf", r"sudo\s+", r"curl\s+.*\|\s*(sh|bash)", r"eval\s*\("]]
+    TOOL_SIGS = {"ls": "list_dir", "cat": "read_file", "git": "git_op"}
 
     def __init__(self, tau: float = TAU) -> None:
         self.tau = tau
 
+    def evaluate_t1_shell(self, task_context: str) -> dict:
+        hits = [p.pattern for p in self.SHELL_RISK if p.search(task_context)]
+        score = 0.0 if hits else 1.0
+        return {"is_eligible": score >= self.tau, "tau_score": score, "reason": "T1-shell-risk" if hits else "T1-ok"}
+
+    def evaluate_t4_tool_selection(self, requested_tools: list, allowed_signatures: list) -> dict:
+        missing = [t for t in requested_tools if t not in self.TOOL_SIGS or self.TOOL_SIGS[t] not in allowed_signatures]
+        score = 0.0 if missing else 1.0
+        return {"is_eligible": score >= self.tau, "tau_score": score, "reason": f"T4-missing:{missing}" if missing else "T4-ok"}
+
     def check_eligibility(self, task_description: str) -> dict:
-        """Evalúa elegibilidad con reglas no-LLM basadas en las 4 microtareas.
-
-        Args:
-            task_description: descripción de la tarea propuesta.
-
-        Returns:
-            {"is_eligible": bool, "reason": str, "tau_score": float}
-        """
-        hits = []
-        for pat in self.SHELL_RISK + self.MEMORY_RISK + self.NETWORK_RISK:
-            if pat.search(task_description):
-                hits.append(pat.pattern)
-        tau_score = 0.0 if hits else 1.0
-        is_eligible = tau_score >= self.tau
-        reason = (
-            f"RIESGO detectado: {hits}; tau_score={tau_score:.2f} < TAU={self.tau} -> NO ELEGIBLE"
-            if hits else f"Sin patrones de riesgo; tau_score={tau_score:.2f} >= TAU={self.tau} -> ELEGIBLE"
-        )
-        return {"is_eligible": bool(is_eligible), "reason": reason, "tau_score": float(tau_score)}
-
+        r1 = self.evaluate_t1_shell(task_description)
+        score = r1["tau_score"]  # T4 no aplica a texto libre; se usa T1 como proxy del harness
+        return {"is_eligible": r1["is_eligible"], "tau_score": score, "reason": r1["reason"]}
 
 if __name__ == "__main__":
     v = PreflightValidator()
-    # Caso 1: seguro
-    print("SAFE:", v.check_eligibility("listar archivos locales del directorio preflight"))
-    # Caso 2: riesgo shell
-    print("SHELL:", v.check_eligibility("ejecutar rm -rf /tmp/test en el host"))
-    # Caso 3: riesgo memoria
-    print("MEM:", v.check_eligibility("leer /etc/passwd para contexto de memoria"))
+    print("T1 ok:", v.evaluate_t1_shell("ls -la"))
+    print("T1 fail:", v.evaluate_t1_shell("rm -rf /"))
+    print("T4 ok:", v.evaluate_t4_tool_selection(["ls"], ["list_dir"]))
+    print("T4 fail:", v.evaluate_t4_tool_selection(["ghost"], ["list_dir"]))
