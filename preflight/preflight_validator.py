@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Preflight Validator — regla no-LLM para T1 (shell auto-approval).
+"""Preflight Validator — reglas no-LLM para las 4 microtareas (arXiv 2610.00025).
 
-Referencia: arXiv 2610.00025 (Microtask Eligibility Gap). La línea base
-no-LLM debe pasar con confianza >= TAU antes de cualquier intervención SLM.
-Fail-closed: cualquier ambigüedad -> no elegible.
+T1: shell auto-approval  |  T2: memory recall/write  |  T3: memory write  |  T4: tool/network selection
+Regla operativa: fail-closed. Riesgo detectado -> is_eligible=False, tau_score < TAU (0.95).
 """
 from __future__ import annotations
 import re
@@ -12,40 +11,58 @@ TAU: float = 0.95
 
 
 class PreflightValidator:
-    """Validador defensivo para microtarea T1 (shell auto-approval)."""
+    """Validador defensivo con reglas deterministas no-LLM para las 4 microtareas."""
 
-    RISK_PATTERNS: list[re.Pattern] = [
+    # T1: shell auto-approval (patrones destructivos / remotos)
+    SHELL_RISK: list[re.Pattern] = [
         re.compile(r"rm\s+-rf", re.IGNORECASE),
-        re.compile(r"curl\s+\|\s*bash", re.IGNORECASE),
-        re.compile(r"sudo\s+.*\b(sh|bash|python)\b", re.IGNORECASE),
+        re.compile(r"sudo\s+", re.IGNORECASE),
+        re.compile(r"curl\s+.*\|\s*(sh|bash)", re.IGNORECASE),
         re.compile(r"eval\s*\(", re.IGNORECASE),
+    ]
+    # T2/T3: memory recall/write no autorizado (archivos sensibles / inyección)
+    MEMORY_RISK: list[re.Pattern] = [
+        re.compile(r"/etc/(passwd|shadow|hosts)"),
+        re.compile(r"\.env\b|\.secret\b"),
+        re.compile(r"injection|poison", re.IGNORECASE),
+    ]
+    # T4: tool/network selection de riesgo (redes externas no whitelisted)
+    NETWORK_RISK: list[re.Pattern] = [
+        re.compile(r"curl\s+https?://[^\s]+", re.IGNORECASE),
+        re.compile(r"wget\s+https?://", re.IGNORECASE),
+        re.compile(r"netcat|nc\s+-[e]", re.IGNORECASE),
     ]
 
     def __init__(self, tau: float = TAU) -> None:
         self.tau = tau
 
-    def validate(self, prompt: str) -> dict[str, bool | str]:
-        """Aplica reglas no-LLM y retorna elegibilidad basada en TAU.
+    def check_eligibility(self, task_description: str) -> dict:
+        """Evalúa elegibilidad con reglas no-LLM basadas en las 4 microtareas.
 
         Args:
-            prompt: texto de la tarea propuesta por el agente.
+            task_description: descripción de la tarea propuesta.
 
         Returns:
-            Diccionario con `is_eligible` (bool) y `reason` (str).
+            {"is_eligible": bool, "reason": str, "tau_score": float}
         """
-        hits = [p.pattern for p in self.RISK_PATTERNS if p.search(prompt)]
-        confidence = 1.0 if not hits else 0.0
-        is_eligible = confidence >= self.tau
+        hits = []
+        for pat in self.SHELL_RISK + self.MEMORY_RISK + self.NETWORK_RISK:
+            if pat.search(task_description):
+                hits.append(pat.pattern)
+        tau_score = 0.0 if hits else 1.0
+        is_eligible = tau_score >= self.tau
         reason = (
-            f"confianza={confidence:.2f} (TAU={self.tau}); riesgos={hits}"
-            if hits else f"confianza={confidence:.2f} >= TAU={self.tau}; sin patrones de riesgo"
+            f"RIESGO detectado: {hits}; tau_score={tau_score:.2f} < TAU={self.tau} -> NO ELEGIBLE"
+            if hits else f"Sin patrones de riesgo; tau_score={tau_score:.2f} >= TAU={self.tau} -> ELEGIBLE"
         )
-        return {"is_eligible": is_eligible, "reason": reason}
+        return {"is_eligible": bool(is_eligible), "reason": reason, "tau_score": float(tau_score)}
 
 
 if __name__ == "__main__":
     v = PreflightValidator()
-    ok = v.validate("listar archivos del directorio preflight/")
-    print("PASS:", ok)
-    fail = v.validate("ejecutar rm -rf /tmp/test en el servidor remoto")
-    print("FAIL:", fail)
+    # Caso 1: seguro
+    print("SAFE:", v.check_eligibility("listar archivos locales del directorio preflight"))
+    # Caso 2: riesgo shell
+    print("SHELL:", v.check_eligibility("ejecutar rm -rf /tmp/test en el host"))
+    # Caso 3: riesgo memoria
+    print("MEM:", v.check_eligibility("leer /etc/passwd para contexto de memoria"))
