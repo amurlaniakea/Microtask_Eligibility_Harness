@@ -2,8 +2,44 @@
 
 [![License: AGPL-3.0-or-later](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
-Guardrail defensivo para microtareas de harness de agentes (arXiv 2610.00025).
-- Licencia: AGPL-3.0-or-later (ver LICENSE, 661 líneas, texto FSF verbatim).
-- Autor: Pedro Sordo Martínez — amurlaniakea@gmail.com
-- Referencia: `arXiv:2610.00025` (gap de elegibilidad 0/16 en SLMs para T1-T4).
-- Benchmark: `python benchmark/run_benchmark.py` (assert 0/16 elegibles).
+## El Problema
+
+Agent harnesses delegan microtareas críticas (shell auto-approval, memory recall/write, tool selection) a modelos pequeños (SLMs). El paper `arXiv:2610.00025` (Hu / Ramachandran, 2026) mide un **Microtask Eligibility Gap**: con línea base no-LLM + regla CI (`tau_score >= 0.95`), ninguna de las 16 configuraciones evaluadas (`Qwen3` 0.6/1.7/4/8B, `Llama-3.x`) pasa. **0/16 elegibles**. La solución no es confiar en el SLM: es proteger cada microtarea con una base determinista certificada.
+
+## La Solución
+
+Este proyecto implementa un harness defensivo con 4 componentes deterministas:
+
+- **Preflight Validator** (T1 / T4): reglas no-LLM (`re.Pattern`) para shell (`rm -rf`, `sudo`, `eval`) y tool selection (whitelist de firmas). Fail-closed.
+- **Memory Guardrail** (T2 / T3): línea base BM25 simulada (solapamiento determinista de tokens) con cascade de contexto; rechazo de inyección (`clear_memory`, `.env`, `.secret`).
+- **Harness Adapter**: pipeline que combina T1-T4; cualquier `tau_score < 0.95` activa `requires_human_review`.
+- **CI Baseline Checker**: umbral `TAU = 0.95` importado como fuente de verdad; tests adversarios incluidos.
+
+## Uso Rápido
+
+```bash
+# Clonar
+git clone https://github.com/amurlaniakea/Microtask_Eligibility_Harness.git
+cd Microtask_Eligibility_Harness
+
+# Instalar dependencias
+pip install pytest
+
+# Correr tests (incluye adversarios)
+pytest -v
+
+# Ejecutar benchmark (replica 2610.00025: 0/16)
+python benchmark/run_benchmark.py
+```
+
+Salida esperada:
+```
+Benchmark completado: 0/16 elegibles (paper 2610.00025: 0/16).
+ASSERT PASADO: 0/16 elegibles, replicando el eligibility gap del paper.
+```
+
+## Referencia
+
+- Paper: [arXiv:2610.00025 — Measuring the Microtask Eligibility Gap](https://arxiv.org/abs/2610.00025) (Hu, Ramachandran; 2026).
+- Licencia: [AGPL-3.0-or-later](https://www.gnu.org/licenses/agpl-3.0) (`LICENSE`, 661 líneas, texto FSF verbatim).
+- Autor: Pedro Sordo Martínez — `amurlaniakea@gmail.com`
